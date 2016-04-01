@@ -27,7 +27,7 @@ staticQu<-optionBigMatrix
 for (tickerName in names(optionBigMatrix)) {
   
   #Error debbuger
-  print(tickerName)
+  #print(tickerName)
   
   #Ticker table
   tickerOption<-options[(tickerName==options["V14"]) & ("Call"==options["V15"]),]
@@ -72,24 +72,19 @@ for (tickerName in names(optionBigMatrix)) {
     tickerAugmentedMatrix[i, dimnames(tickerAugmentedMatrix)[["Strike"]] %in% tickerOption[(tickerOption[["V17"]]==i), 16] ,] <- as.matrix(tickerOption[(tickerOption[["V17"]]==i), 5:6]) 
   
     #Calculate the Static Q
-    tickerQuMatrix[i,dimnames(tickerAugmentedMatrix)[["Strike"]] %in% tickerOption[(tickerOption[["V17"]]==i), 16] ] <- (tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"bid"]),"bid"][-length(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"bid"]),"bid"])]  - tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"ask"]),"ask"][-1] ) / (as.numeric(names(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"bid"]),"bid"]))[-1] - as.numeric(names(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"bid"]),"bid"]))[-length(as.numeric(names(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"bid"]),"bid"])))]    )
+      tickerQuMatrix[i,dimnames(tickerAugmentedMatrix)[["Strike"]] %in% tickerOption[(tickerOption[["V17"]]==i), 16] ] <- (tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"bid"]),"bid"][-length(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"bid"]),"bid"])]  - tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"ask"]),"ask"][-1] ) / (as.numeric(names(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"bid"]),"bid"]))[-1] - as.numeric(names(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"bid"]),"bid"]))[-length(as.numeric(names(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"bid"]),"bid"])))]    )
     
     #Error Debugger
-    print(i)
+    #print(i)
     
   }
   
   #Asign the Augmented Matrix in a list position
   optionBigMatrix[[tickerName]]<-tickerAugmentedMatrix
   
+  #Asign the Static ticker Matrix in a list position
   staticQu[[tickerName]]<-tickerQuMatrix
   
 
   
-  
- 
-  
-  
 }
-
-
