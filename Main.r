@@ -1,12 +1,21 @@
 ###### Empieza el scrip para replicar el paper de Carr
 
+#Librería con utilidades
+library("taRifx")
 
 ##### Data Load #####
 
 #Trabajo con los 32
 
-spot <- read.delim("~/General Documents/Maqui/online_spot.txt", header=FALSE)
-options <- read.delim("~/General Documents/Maqui/online_option.txt", header=FALSE)
+#Carga Lab
+#spot <- read.delim("~/General Documents/Maqui/online_spot.txt", header=FALSE)
+#options <- read.delim("~/General Documents/Maqui/online_option.txt", header=FALSE)
+
+#Carga desde la casa
+spot <- online_spot <- read.delim("~/Maquinola/Live/Pruebasmerv-master/online_spot.txt", header=FALSE)
+options <- read.delim("~/Maquinola/Live/Pruebasmerv-master/online_option.txt", header=FALSE)
+
+
 #Cargo el dictionario spot-options
 source("Dictionary.R")
 
@@ -72,7 +81,15 @@ for (tickerName in names(optionBigMatrix)) {
     tickerAugmentedMatrix[i, dimnames(tickerAugmentedMatrix)[["Strike"]] %in% tickerOption[(tickerOption[["V17"]]==i), 16] ,] <- as.matrix(tickerOption[(tickerOption[["V17"]]==i), 5:6]) 
   
     #Calculate the Static Q
-      tickerQuMatrix[i,dimnames(tickerAugmentedMatrix)[["Strike"]] %in% tickerOption[(tickerOption[["V17"]]==i), 16] ] <- (tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"bid"]),"bid"][-length(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"bid"]),"bid"])]  - tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"ask"]),"ask"][-1] ) / (as.numeric(names(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"bid"]),"bid"]))[-1] - as.numeric(names(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"bid"]),"bid"]))[-length(as.numeric(names(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"bid"]),"bid"])))]    )
+    tickerQuMatrix[i,dimnames(tickerAugmentedMatrix)[["Strike"]] %in% tickerOption[(tickerOption[["V17"]]==i), 16] ] <- (tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"ask"]),"ask"][-length(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"ask"]),"ask"])]  - tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"bid"]),"bid"][-1] ) / (as.numeric(names(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"ask"]),"ask"]))[-1] - as.numeric(names(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"ask"]),"ask"]))[-length(as.numeric(names(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"ask"]),"ask"])))]    )
+    
+    #Retrieve the order information
+    
+    #The shorts
+    names(tickerQuMatrix[i,dimnames(tickerAugmentedMatrix)[["Strike"]] %in% tickerOption[(tickerOption[["V17"]]==i), 16] ])[shift(tickerQuMatrix[i,dimnames(tickerAugmentedMatrix)[["Strike"]] %in% tickerOption[(tickerOption[["V17"]]==i), 16] ]<0)]
+    
+    #The longs
+    names(tickerQuMatrix[i,dimnames(tickerAugmentedMatrix)[["Strike"]] %in% tickerOption[(tickerOption[["V17"]]==i), 16] ])[tickerQuMatrix[i,dimnames(tickerAugmentedMatrix)[["Strike"]] %in% tickerOption[(tickerOption[["V17"]]==i), 16] ]<0]
     
     #Error Debugger
     #print(i)
@@ -85,6 +102,21 @@ for (tickerName in names(optionBigMatrix)) {
   #Asign the Static ticker Matrix in a list position
   staticQu[[tickerName]]<-tickerQuMatrix
   
+  ##### Order Interpretation ####
 
+  tickerOrder<- vector("list",sum(staticQu[[tickerName]]<0 , na.rm = TRUE))
+  tickerOrderInfo<-which((!(is.na((staticQu[[tickerName]]<0)))) & staticQu[[tickerName]]<0, arr.in=TRUE)
+  
+  #Information of which combination has to be made
+  
+  
+  
+  #Strikes 
+  cbind(dimnames(staticQu[[tickerName]])[["Maturity"]][tickerOrderInfo[,1]],dimnames(staticQu[[tickerName]])[["Strike"]][tickerOrderInfo[,2]])
+  
+  #Maturities
+  
+  
   
 }
+
