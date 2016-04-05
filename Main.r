@@ -7,6 +7,8 @@ require("data.table")
 
 #Trabajo con los 32
 
+
+
 #Carga Lab
 spot <- read.delim("~/General Documents/Maqui/online_spot.txt", header=FALSE)
 options <- read.delim("~/General Documents/Maqui/online_option.txt", header=FALSE)
@@ -21,8 +23,6 @@ source("Dictionary.R")
 
 ##### List of Arrays for each ticker ####
 
-
-
 #Ticker Definition
 ticker <- levels(as.factor(options[["V14"]]))
 
@@ -32,6 +32,9 @@ names(optionBigMatrix) <- names(dictionary)
 
 #List of arrays for Static replication 1
 staticQu<-optionBigMatrix
+
+#List of arrays for the Butterfly run
+Butterfly<-optionBigMatrix
 
 #Initial vector of filling for the book
 intialOrderNum<-rep(0,length(dictionary)*20)
@@ -83,9 +86,19 @@ for (tickerName in names(optionBigMatrix)) {
   tickerAugmentedMatrix <- array( , dim=c(length(tickerMaturityAum),length(tickerStrikeAum),2) , dimnames = list( Maturity = tickerMaturityAum ,Strike = tickerStrikeAum , quote = c("bid","ask") ) )
   
   
-  #Allocate the 2D Q Matrix
-  tickerQuMatrix <- array( , dim=c(length(tickerMaturityAum),length(tickerStrikeAum)) , dimnames = list( Maturity = tickerMaturityAum ,Strike = tickerStrikeAum ) )
+  #Allocate the 2D Q Matrix and Butterfly Matrix (This is declare as an array, if you want to gain speed redo everything with a data.table (10x faster))
+  tickerQuMatrix <- array( , dim=c(length(tickerMaturityAum),length(tickerStrikeAum)) , 
+                          dimnames = list( Maturity = tickerMaturityAum ,Strike = tickerStrikeAum ) )
   
+  #Allocate the memory for the data table of buttreflies
+  tickerBsMatrix <- data.table(maturity = tickerMaturityAum)
+                              
+  #Set the dimension for all the data table of butterflies
+  set( tickerBsMatrix, 1:length(tickerMaturityAum) ,tickerStrikeAum[-c(1,length(tickerStrikeAum))], 
+      as.numeric(rep(NA,length(tickerMaturityAum))) )
+  
+  #Set the key for searchs in the butterflies data table
+  setkey(tickerBsMatrix,maturity)
   
   #Initial Values Augmented Option Matrix
   tickerAugmentedMatrix["0",,"bid"]<- (as.numeric(dimnames(tickerAugmentedMatrix)$Strike)-sb[1])*( (as.numeric(dimnames(tickerAugmentedMatrix)$Strike)-sb[1])>0 )
@@ -95,7 +108,7 @@ for (tickerName in names(optionBigMatrix)) {
   
   #Initial Values Static Q Matrix
   tickerQuMatrix[,"0"]<-rep(1,length(tickerMaturityAum))
-  
+ 
 
   
   #Fill the dates 
@@ -103,7 +116,10 @@ for (tickerName in names(optionBigMatrix)) {
     #There is an additional filter for the strikes that are elegible for each maturity
     tickerAugmentedMatrix[i, dimnames(tickerAugmentedMatrix)[["Strike"]] %in% tickerOption[(tickerOption[["V17"]]==i), 16] ,] <- as.matrix(tickerOption[(tickerOption[["V17"]]==i), 5:6]) 
     
-    #Calculate the Static Q
+    
+    
+    
+    ##### Calculate the Static Q Matrix ####
     tickerQuMatrix[i,dimnames(tickerAugmentedMatrix)[["Strike"]] %in% tickerOption[(tickerOption[["V17"]]==i), 16] ] <- (tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"ask"]),"ask"][-length(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"ask"]),"ask"])]  - tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"bid"]),"bid"][-1] ) / (as.numeric(names(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"ask"]),"ask"]))[-1] - as.numeric(names(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"ask"]),"ask"]))[-length(as.numeric(names(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"ask"]),"ask"])))]    )
     
     #Retrieve the order information
@@ -122,17 +138,12 @@ for (tickerName in names(optionBigMatrix)) {
     tickerOrderNumber<-as.integer(dim(tickerOrderPanelLong)[1])
     
 
-    #Labels
-    #names(tickerOrderMatrix)<-c("type","name",
-    #                            "order1","ticker1","quantity1","price1",
-    #                            "order2","ticker2","quantity2","price2")
-    #Drop rows
-    #row.names(tickerOrderMatrix)<-c()
     
 
-    
+    ##Test for ticker names
     #print(tickerName)
     #print(tickerOrderNumber)
+    
     
     #Assign orders to the Book if the orders exist
     if(!(tickerOrderNumber==0L)) {
@@ -145,13 +156,50 @@ for (tickerName in names(optionBigMatrix)) {
       #Order Booking
       set(bigOrderBook, (orderCount):(orderCount+tickerOrderNumber-1) , 1L:10L , tickerOrderMatrix)
       
-      
       #Update the Order Index
       orderCount<-orderCount + tickerOrderNumber
-      
-      
-    }
     
+      }
+    
+    
+    ##### Calculate the Butterfly Matrix #####
+    
+    if( length(na.omit(tickerAugmentedMatrix[i,,"bid"]))>=3 )
+    {
+    
+    tickerButterfly<- tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"ask"]),"ask"][-c(length(names(na.omit(tickerAugmentedMatrix[i,,"ask"]))) ,length(names(na.omit(tickerAugmentedMatrix[i,,"ask"])))-1)] +                                                               #Takes the previous call value
+                                 (
+                                  as.numeric(names(na.omit(tickerAugmentedMatrix[i,,"ask"]))[-(1:2)]) -
+                                   
+                                  as.numeric(names(na.omit(tickerAugmentedMatrix[i,,"ask"]))[-c(length(names(na.omit(tickerAugmentedMatrix[i,,"ask"]))) ,length(names(na.omit(tickerAugmentedMatrix[i,,"ask"])))-1)])
+                                 )/ #Calculates the first numerator
+                                 (
+                                  as.numeric(names(na.omit(tickerAugmentedMatrix[i,,"ask"]))[-(1:2)]) -
+                                   
+                                  as.numeric(names(na.omit(tickerAugmentedMatrix[i,,"ask"]))[-c(1,length(names(na.omit(tickerAugmentedMatrix[i,,"ask"]))))])
+                                 )* #Calculates the first denominator 
+                                                                                           
+                                 tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"bid"]),"bid"][-c(1,length(names(na.omit(tickerAugmentedMatrix[i,,"bid"]))) )]+ #Takes the actual call value                                                                                                                      
+                                 (
+                                  as.numeric(names(na.omit(tickerAugmentedMatrix[i,,"ask"]))[-c(1,length(names(na.omit(tickerAugmentedMatrix[i,,"ask"]))))])-  
+                                  as.numeric(names(na.omit(tickerAugmentedMatrix[i,,"ask"]))[-c(length(names(na.omit(tickerAugmentedMatrix[i,,"ask"]))) ,length(names(na.omit(tickerAugmentedMatrix[i,,"ask"])))-1)])
+                                 )/
+                                 
+                                 (
+                                   as.numeric(names(na.omit(tickerAugmentedMatrix[i,,"ask"]))[-(1:2)])-
+                                   as.numeric(names(na.omit(tickerAugmentedMatrix[i,,"ask"]))[-c(1,length(names(na.omit(tickerAugmentedMatrix[i,,"ask"]))))])
+                                 )*
+                                 tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"ask"]),"ask"][-(1:2)]
+      
+                              
+    
+    set(tickerBsMatrix,                          #The data table
+        tickerBsMatrix[,.I[maturity==i]],        #The maturity filter
+        names(tickerBsMatrix)[names(tickerBsMatrix) %in% tickerOption[(tickerOption[["V17"]]==i),16]], #The Strike Filter
+        as.list(tickerButterfly) ) #Value assignment (Has to be as a list)
+    
+    
+    }
     
     #Error Debugger
     #print(i)
@@ -163,6 +211,9 @@ for (tickerName in names(optionBigMatrix)) {
   
   #Asign the Static ticker Matrix in a list position
   staticQu[[tickerName]]<-tickerQuMatrix
+  
+  #Asign the BS Matrix in the list position
+  Butterfly[[tickerName]]<-tickerBsMatrix
   
   }
 
