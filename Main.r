@@ -1,5 +1,8 @@
 ###### Empieza el scrip para replicar el paper de Carr
 
+#### Set warnings as errors ####
+options(warn=2)
+
 #Librería con utilidades
 require("taRifx")
 require("data.table")
@@ -8,19 +11,19 @@ require("data.table")
 #Trabajo con los 32
 
 #Para esperar el command prompt
-myArgs = commandArgs(trailingOnly=TRUE)
+#myArgs = commandArgs(trailingOnly=TRUE)
 
 #Carga Lab
 #spot <- read.delim("~/General Documents/Maqui/online_spot.txt", header=FALSE)
 #options <- read.delim("~/General Documents/Maqui/online_option.txt", header=FALSE)
 
 #Carga desde la casa
-#spot <- read.delim("~/Maquinola/Live/Pruebasmerv-master/online_spot.txt", header=FALSE)
-#options <- read.delim("~/Maquinola/Live/Pruebasmerv-master/online_option.txt", header=FALSE)
+spot <- read.delim("~/Maquinola/Live/Pruebasmerv-master/online_spot.txt", header=FALSE)
+options <- read.delim("~/Maquinola/Live/Pruebasmerv-master/online_option.txt", header=FALSE)
 
 #Carga para el Backtesting
-spot <- read.delim(myArgs[1], header=FALSE)
-options <- read.delim(myArgs[2], header=FALSE)
+#spot <- read.delim(myArgs[1], header=FALSE)
+#options <- read.delim(myArgs[2], header=FALSE)
 
 #Cargo el dictionario spot-options
 source("Dictionary.R")
@@ -97,12 +100,15 @@ for (tickerName in names(optionBigMatrix)) {
                 #Allocate the memory for the data table of buttreflies
                 tickerBsMatrix <- data.table(maturity = tickerMaturityAum)
                 
-                #Set the dimension for all the data table of butterflies
-                set( tickerBsMatrix, 1:length(tickerMaturityAum) ,tickerStrikeAum[-c(1,length(tickerStrikeAum))], 
-                     as.numeric(rep(NA,length(tickerMaturityAum))) )
-                
-                #Set the key for searchs in the butterflies data table
-                setkey(tickerBsMatrix,maturity)
+                if( length(tickerStrikeAum)>=3 )
+                {
+                        #Set the dimension for all the data table of butterflies
+                        set( tickerBsMatrix, 1:length(tickerMaturityAum) ,tickerStrikeAum[-c(1,length(tickerStrikeAum))], 
+                             as.numeric(rep(NA,length(tickerMaturityAum))) )
+                        
+                        #Set the key for searchs in the butterflies data table
+                        setkey(tickerBsMatrix,maturity)
+                }
                 
                 #Initial Values Augmented Option Matrix
                 tickerAugmentedMatrix["0",,"bid"]<- (as.numeric(dimnames(tickerAugmentedMatrix)$Strike)-sb[1])*( (as.numeric(dimnames(tickerAugmentedMatrix)$Strike)-sb[1])>0 )
@@ -199,7 +205,7 @@ for (tickerName in names(optionBigMatrix)) {
                                 
                                 set(tickerBsMatrix,                          #The data table
                                     tickerBsMatrix[,.I[maturity==i]],        #The maturity filter
-                                    names(tickerBsMatrix)[names(tickerBsMatrix) %in% tickerOption[(tickerOption[["V17"]]==i),16]], #The Strike Filter
+                                    names(na.omit(tickerAugmentedMatrix[i,,"ask"]))[-c(1,length(names(na.omit(tickerAugmentedMatrix[i,,"ask"]))))] , #The Strike Filter
                                     as.list(tickerButterfly) ) #Value assignment (Has to be as a list)
                                 
                                 
@@ -223,4 +229,3 @@ for (tickerName in names(optionBigMatrix)) {
         
         
 }
-print(bigOrderBook)
