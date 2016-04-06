@@ -1,7 +1,7 @@
 ###### Empieza el scrip para replicar el paper de Carr
 
 #### Set warnings as errors ####
-options(warn=2)
+#options(warn=2)
 
 #Librería con utilidades
 require("taRifx")
@@ -11,19 +11,19 @@ require("data.table")
 #Trabajo con los 32
 
 #Para esperar el command prompt
-#myArgs = commandArgs(trailingOnly=TRUE)
+myArgs = commandArgs(trailingOnly=TRUE)
 
 #Carga Lab
 #spot <- read.delim("~/General Documents/Maqui/online_spot.txt", header=FALSE)
 #options <- read.delim("~/General Documents/Maqui/online_option.txt", header=FALSE)
 
 #Carga desde la casa
-spot <- read.delim("~/Maquinola/Live/Pruebasmerv-master/online_spot.txt", header=FALSE)
-options <- read.delim("~/Maquinola/Live/Pruebasmerv-master/online_option.txt", header=FALSE)
+#spot <- read.delim("~/Maquinola/Live/Pruebasmerv-master/online_spot.txt", header=FALSE)
+#options <- read.delim("~/Maquinola/Live/Pruebasmerv-master/online_option.txt", header=FALSE)
 
 #Carga para el Backtesting
-#spot <- read.delim(myArgs[1], header=FALSE)
-#options <- read.delim(myArgs[2], header=FALSE)
+spot <- read.delim(myArgs[1], header=FALSE)
+options <- read.delim(myArgs[2], header=FALSE)
 
 #Cargo el dictionario spot-options
 source("Dictionary.R")
