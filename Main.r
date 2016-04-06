@@ -25,6 +25,14 @@ options <- read.delim("~/General Documents/Maqui/online_option.txt", header=FALS
 #spot <- read.delim(myArgs[1], header=FALSE)
 #options <- read.delim(myArgs[2], header=FALSE)
 
+
+#Transformo numeros del dataframe leído
+
+spot[,4]<-as.numeric(as.character(spot[,4]))
+spot[,5]<-as.numeric(as.character(spot[,5]))
+spot[,6]<-as.numeric(as.character(spot[,6]))
+spot[,7]<-as.numeric(as.character(spot[,7]))
+
 #Cargo el dictionario spot-options
 source("Dictionary.R")
 
@@ -49,7 +57,7 @@ intialOrderNum<-rep(0,length(dictionary)*20)
 intialOrderChar<-rep("0",length(dictionary)*20)
 
 #Initialize the OrderBook
-bigOrderBook<-data.table(type=      intialOrderChar,
+bigOrderBookQu<-data.table(type=      intialOrderChar,
                          name=      intialOrderChar,
                          order1=    intialOrderChar,
                          ticker1=   intialOrderChar,
@@ -60,9 +68,29 @@ bigOrderBook<-data.table(type=      intialOrderChar,
                          quantity2= as.integer(intialOrderNum),
                          price2=    intialOrderNum)
 
+#Initialize the OrderBook
+bigOrderBookBs<-data.table(type=      intialOrderChar,
+                         name=      intialOrderChar,
+                         order1=    intialOrderChar,
+                         ticker1=   intialOrderChar,
+                         quantity1= as.integer(intialOrderNum),
+                         price1=    intialOrderNum,
+                         order2=    intialOrderChar,
+                         ticker2=   intialOrderChar,
+                         quantity2= as.integer(intialOrderNum),
+                         price2=    intialOrderNum,
+                         order3=    intialOrderChar,
+                         ticker3=   intialOrderChar,
+                         quantity3= as.integer(intialOrderNum),
+                         price3=    intialOrderNum)
+
+
+
+
 
 #Initialize OrderCount
-orderCount<-1L
+orderCountQu<-1L
+orderCountBs<-1L
 
 for (tickerName in names(optionBigMatrix)) {
   
@@ -143,31 +171,31 @@ for (tickerName in names(optionBigMatrix)) {
       tickerMaturityShort<- names(tickerQuMatrix[i,dimnames(tickerAugmentedMatrix)[["Strike"]] %in% tickerOption[(tickerOption[["V17"]]==i), 16] ])[tickerQuMatrix[i,dimnames(tickerAugmentedMatrix)[["Strike"]] %in% tickerOption[(tickerOption[["V17"]]==i), 16] ]<0]
       
       #Order Information Filtering
-      tickerOrderPanelLong<-na.omit(tickerOption[  (tickerOption["V17"]==i)  & (tickerOption[["V16"]] %in% tickerMaturityLong)  ,])
-      tickerOrderPanelShort<-na.omit(tickerOption[ (tickerOption["V17"]==i)  & (tickerOption[["V16"]] %in% tickerMaturityShort) ,])
-      tickerOrderNumber<-as.integer(dim(tickerOrderPanelLong)[1])
+      tickerQuOrderPanelLong<-na.omit(tickerOption[  (tickerOption["V17"]==i)  & (tickerOption[["V16"]] %in% tickerMaturityLong)  ,])
+      tickerQuOrderPanelShort<-na.omit(tickerOption[ (tickerOption["V17"]==i)  & (tickerOption[["V16"]] %in% tickerMaturityShort) ,])
+      tickerQuOrderNumber<-as.integer(dim(tickerQuOrderPanelLong)[1])
       
       
       
       
       ##Test for ticker names
       #print(tickerName)
-      #print(tickerOrderNumber)
+      #print(tickerQuOrderNumbe)
       
       
       #Assign orders to the Book if the orders exist
-      if(!(tickerOrderNumber==0L)) {
+      if(!(tickerQuOrderNumber==0L)) {
         
         #Order construction
-        tickerOrderMatrix<-cbind( rep("A",tickerOrderNumber),
-                                  rep("V",tickerOrderNumber), 
-                                  rep("B",tickerOrderNumber), tickerOrderPanelLong [,c(1,7,6)],
-                                  rep("S",tickerOrderNumber), tickerOrderPanelShort[,c(1,4,5)] )
+        tickerOrderQuMatrix<-cbind( rep("A",tickerQuOrderNumber),
+                                  rep("V",tickerQuOrderNumber), 
+                                  rep("B",tickerQuOrderNumber), tickerQuOrderPanelLong [,c(1,7,6)],
+                                  rep("S",tickerQuOrderNumber), tickerQuOrderPanelShort[,c(1,4,5)] )
         #Order Booking
-        set(bigOrderBook, (orderCount):(orderCount+tickerOrderNumber-1) , 1L:10L , tickerOrderMatrix)
+        set(bigOrderBookQu, (orderCountQu):(orderCountQu+tickerQuOrderNumber-1) , 1L:10L , tickerOrderQuMatrix)
         
         #Update the Order Index
-        orderCount<-orderCount + tickerOrderNumber
+        orderCountQu<-orderCountQu + tickerQuOrderNumber
         
       }
       
@@ -207,6 +235,60 @@ for (tickerName in names(optionBigMatrix)) {
             tickerBsMatrix[,.I[maturity==i]],        #The maturity filter
             names(na.omit(tickerAugmentedMatrix[i,,"ask"]))[-c(1,length(names(na.omit(tickerAugmentedMatrix[i,,"ask"]))))] , #The Strike Filter
             as.list(tickerButterfly) ) #Value assignment (Has to be as a list)
+        
+        #Getting the positions from the Butterflies
+        
+        ##Long positions##
+        
+        #Lagged Positions
+        tickerLeftBsLong<- names(na.omit(tickerAugmentedMatrix[i,,"ask"]))[-c(length(names(na.omit(tickerAugmentedMatrix[i,,"ask"])))-1,length(names(na.omit(tickerAugmentedMatrix[i,,"ask"]))) )][na.omit((tickerBsMatrix[i]<0)[-1])]
+        #Posterior Positions
+        tickerRightBsLong<- names(na.omit(tickerAugmentedMatrix[i,,"ask"]))[-c(1,2)][na.omit((tickerBsMatrix[i]<0)[-1])]
+        
+        ##Short positions##
+        #Middle positions
+        tickerMiddleBsShort<- names(na.omit(tickerAugmentedMatrix[i,,"ask"]))[-c(1,length(names(na.omit(tickerAugmentedMatrix[i,,"ask"]))) )][na.omit((tickerBsMatrix[i]<0)[-1])]
+        
+        
+        ##Panel Order retrieval##
+        ##Implementation of a 0 Strike
+        if(tickerLeftBsLong[1]==0){
+          tickerOrderPanelBsLeftLong   <-na.omit(tickerOption[  (tickerOption["V17"]==i)  & (tickerOption[["V16"]] %in% tickerLeftBsLong)  ,])  
+          tickerOrderPanelBsLeftLong   <-rbind(dictionary[[tickerName]],rep(0,2),as.numeric(as.character(unlist(spot[spot$V1==dictionary[[tickerName]],c(4,5,6,7)],use.name=F))),
+                                               rep(0,10),
+                                               data.frame(tickerOrderPanelBsLeftLong))
+        }else{
+          tickerOrderPanelBsLeftLong   <-na.omit(tickerOption[  (tickerOption["V17"]==i)  & (tickerOption[["V16"]] %in% tickerLeftBsLong)  ,])  
+        }
+        
+        #Retrieval of the order for the Butterfly
+        tickerOrderPanelBsRightLong  <- na.omit(tickerOption[  (tickerOption["V17"]==i)  & (tickerOption[["V16"]] %in% tickerRightBsLong)  ,])
+        tickerOrderPanelBsMiddleShort <- na.omit(tickerOption[  (tickerOption["V17"]==i)  & (tickerOption[["V16"]] %in% tickerMiddleBsShort)  ,])
+       
+        tickerOrderNumberBs<-as.integer(dim(tickerOrderPanelBsMiddleShort)[1])
+        
+        
+        
+        #Assign orders to the Book if the orders exist
+        if(!(tickerOrderNumberBs==0L)) {
+          
+          #Order construction
+          tickerOrderBsMatrix<-cbind( rep("A",tickerOrderNumberBs),
+                                    rep("BS",tickerOrderNumberBs), 
+                                    rep("B",tickerOrderNumberBs), cbind(tickerOrderPanelBsLeftLong[,1],as.numeric(tickerOrderPanelBsLeftLong[,6]),as.numeric(tickerOrderPanelBsLeftLong[,7])), 
+                                    rep("B",tickerOrderNumberBs), tickerOrderPanelBsRightLong    [,c(1,7,6)],
+                                    rep("S",tickerOrderNumberBs), tickerOrderPanelBsMiddleShort  [,c(1,4,5)])
+          #Order Booking
+          set(bigOrderBookBs, (orderCountBs):(orderCountBs+tickerOrderNumberBs-1) , 1L:14L , tickerOrderBsMatrix)
+          
+          #Update the Order Index
+          orderCountBs<-orderCountBs + tickerOrderNumberBs
+          
+        }
+        
+        
+        
+        
         
         
       }
