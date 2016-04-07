@@ -1,13 +1,15 @@
+#Rprof("Profilingtest")
+
 ###### Empieza el scrip para replicar el paper de Carr
 
 #### Set warnings as errors ####
-options(warn=2)
+#options(warn=1)
 
 #Librería con utilidades
-require("taRifx")
-require("data.table")
+suppressWarnings(suppressMessages(require("taRifx")))
+suppressWarnings(suppressMessages(require("data.table")))
 ##### Data Load #####
-
+setwd("~/Maquinola/Live/Pruebasmerv-master")
 #Trabajo con los 32
 
 #Para esperar el command prompt
@@ -114,8 +116,15 @@ for (tickerName in names(optionBigMatrix)) {
                 tickerMaturityAum <- c(0,tickerMaturity)
                 
                 #Spot retrieve
-                sb<-rep(as.numeric(as.character(spot[spot[["V1"]]==dictionary[[tickerName]],5])), length(tickerMaturityAum))
-                sa<-rep(as.numeric(as.character(spot[spot[["V1"]]==dictionary[[tickerName]],6])), length(tickerMaturityAum))
+                if(all(!spot[["V1"]]==dictionary[[tickerName]]))
+                {
+                        sb<-rep(0.0,length(tickerMaturityAum))  
+                        sa<-rep(0.0,length(tickerMaturityAum))
+                }else{
+                        sb<-rep(as.numeric(as.character(spot[spot[["V1"]]==dictionary[[tickerName]],5])), length(tickerMaturityAum))
+                        sa<-rep(as.numeric(as.character(spot[spot[["V1"]]==dictionary[[tickerName]],6])), length(tickerMaturityAum))    
+                }
+                
                 
                 #Allocate the 3D Array
                 tickerAugmentedMatrix <- array( , dim=c(length(tickerMaturityAum),length(tickerStrikeAum),2) , dimnames = list( Maturity = tickerMaturityAum ,Strike = tickerStrikeAum , quote = c("bid","ask") ) )
@@ -157,46 +166,53 @@ for (tickerName in names(optionBigMatrix)) {
                         
                         
                         
-                        ##### Calculate the Static Q Matrix ####
-                        tickerQuMatrix[i,dimnames(tickerAugmentedMatrix)[["Strike"]] %in% tickerOption[(tickerOption[["V17"]]==i), 16] ] <- (tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"ask"]),"ask"][-length(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"ask"]),"ask"])]  - tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"bid"]),"bid"][-1] ) / (as.numeric(names(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"ask"]),"ask"]))[-1] - as.numeric(names(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"ask"]),"ask"]))[-length(as.numeric(names(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"ask"]),"ask"])))]    )
-                        
-                        #Retrieve the order information
-                        
-                        #The shorts for that Maturity
-                        
-                        #The names part filters the strike for that given maturity then it takes the proper strikes for the shorts
-                        tickerMaturityLong<- names(tickerQuMatrix[i,dimnames(tickerAugmentedMatrix)[["Strike"]] %in% tickerOption[(tickerOption[["V17"]]==i), 16] ])[taRifx::shift(tickerQuMatrix[i,dimnames(tickerAugmentedMatrix)[["Strike"]] %in% tickerOption[(tickerOption[["V17"]]==i), 16] ]<0)]
-                        
-                        #The names part filters the strike for that given maturity then it takes the proper strikes for the longs
-                        tickerMaturityShort<- names(tickerQuMatrix[i,dimnames(tickerAugmentedMatrix)[["Strike"]] %in% tickerOption[(tickerOption[["V17"]]==i), 16] ])[tickerQuMatrix[i,dimnames(tickerAugmentedMatrix)[["Strike"]] %in% tickerOption[(tickerOption[["V17"]]==i), 16] ]<0]
-                        
-                        #Order Information Filtering
-                        tickerQuOrderPanelLong<-na.omit(tickerOption[  (tickerOption["V17"]==i)  & (tickerOption[["V16"]] %in% tickerMaturityLong)  ,])
-                        tickerQuOrderPanelShort<-na.omit(tickerOption[ (tickerOption["V17"]==i)  & (tickerOption[["V16"]] %in% tickerMaturityShort) ,])
-                        tickerQuOrderNumber<-as.integer(dim(tickerQuOrderPanelLong)[1])
-                        
-                        
-                        
-                        
-                        ##Test for ticker names
+                        ##### Calculate the Static Q Matrix if exits the data to calculate it ####
+                        #print(i)
                         #print(tickerName)
-                        #print(tickerQuOrderNumbe)
-                        
-                        
-                        #Assign orders to the Book if the orders exist
-                        if(!(tickerQuOrderNumber==0L)) {
+                        if( length(na.omit(tickerAugmentedMatrix[i,,"bid"]))>=2 )
+                        {
                                 
-                                #Order construction
-                                tickerOrderQuMatrix<-cbind( rep("A",tickerQuOrderNumber),
-                                                            rep("V",tickerQuOrderNumber), 
-                                                            rep("B",tickerQuOrderNumber), tickerQuOrderPanelLong [,c(1,7,6)],
-                                                            rep("S",tickerQuOrderNumber), tickerQuOrderPanelShort[,c(1,4,5)] )
-                                #Order Booking
-                                set(bigOrderBookQu, (orderCountQu):(orderCountQu+tickerQuOrderNumber-1) , 1L:10L , tickerOrderQuMatrix)
+                                tickerQuMatrix[i,dimnames(tickerAugmentedMatrix)[["Strike"]] %in% tickerOption[(tickerOption[["V17"]]==i), 16] ] <- (tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"ask"]),"ask"][-length(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"ask"]),"ask"])]- tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"bid"]),"bid"][-1] )/ 
+                                        (as.numeric(names(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"ask"]),"ask"]))[-1] - as.numeric(names(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"ask"]),"ask"]))[-length(as.numeric(names(tickerAugmentedMatrix[i, !is.na(tickerAugmentedMatrix[i,,"ask"]),"ask"])))]    )
                                 
-                                #Update the Order Index
-                                orderCountQu<-orderCountQu + tickerQuOrderNumber
+                                #Retrieve the order information
                                 
+                                #The shorts for that Maturity
+                                
+                                #The names part filters the strike for that given maturity then it takes the proper strikes for the shorts
+                                tickerMaturityLong<- names(tickerQuMatrix[i,dimnames(tickerAugmentedMatrix)[["Strike"]] %in% tickerOption[(tickerOption[["V17"]]==i), 16] ])[taRifx::shift(tickerQuMatrix[i,dimnames(tickerAugmentedMatrix)[["Strike"]] %in% tickerOption[(tickerOption[["V17"]]==i), 16] ]<0)]
+                                
+                                #The names part filters the strike for that given maturity then it takes the proper strikes for the longs
+                                tickerMaturityShort<- names(tickerQuMatrix[i,dimnames(tickerAugmentedMatrix)[["Strike"]] %in% tickerOption[(tickerOption[["V17"]]==i), 16] ])[tickerQuMatrix[i,dimnames(tickerAugmentedMatrix)[["Strike"]] %in% tickerOption[(tickerOption[["V17"]]==i), 16] ]<0]
+                                
+                                #Order Information Filtering
+                                tickerQuOrderPanelLong<-na.omit(tickerOption[  (tickerOption["V17"]==i)  & (tickerOption[["V16"]] %in% tickerMaturityLong)  ,])
+                                tickerQuOrderPanelShort<-na.omit(tickerOption[ (tickerOption["V17"]==i)  & (tickerOption[["V16"]] %in% tickerMaturityShort) ,])
+                                tickerQuOrderNumber<-as.integer(dim(tickerQuOrderPanelLong)[1])
+                                
+                                
+                                
+                                
+                                ##Test for ticker names
+                                #print(tickerName)
+                                #print(tickerQuOrderNumbe)
+                                
+                                
+                                #Assign orders to the Book if the orders exist
+                                if(!(tickerQuOrderNumber==0L)) {
+                                        
+                                        #Order construction
+                                        tickerOrderQuMatrix<-cbind( rep("A",tickerQuOrderNumber),
+                                                                    rep("V",tickerQuOrderNumber), 
+                                                                    rep("B",tickerQuOrderNumber), tickerQuOrderPanelLong [,c(1,7,6)],
+                                                                    rep("S",tickerQuOrderNumber), tickerQuOrderPanelShort[,c(1,4,5)] )
+                                        #Order Booking
+                                        set(bigOrderBookQu, (orderCountQu):(orderCountQu+tickerQuOrderNumber-1) , 1L:10L , tickerOrderQuMatrix)
+                                        
+                                        #Update the Order Index
+                                        orderCountQu<-orderCountQu + tickerQuOrderNumber
+                                        
+                                }
                         }
                         
                         
@@ -316,4 +332,20 @@ for (tickerName in names(optionBigMatrix)) {
         
         
 }
+##### Print the outputs ####
+if(dim(bigOrderBookQu[price1!=0][price2!=0])[1] != 0){
+        print(bigOrderBookQu[price1!=0][price2!=0])
+}else{
+        print("NONE")
+}
 
+if(dim(bigOrderBookBs[price1!=0][price2!=0][price3!=0])[1] != 0){
+        print(bigOrderBookBs[price1!=0][price2!=0][price3!=0])
+}else{
+        print("NONE")
+}
+
+#Rprof(NULL)
+
+# summarize the results
+#print(summaryRprof("Profilingtest"))
