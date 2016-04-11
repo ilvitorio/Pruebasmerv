@@ -1,5 +1,3 @@
-#Rprof("Profilingtest")
-
 ###### Empieza el scrip para replicar el paper de Carr
 
 #### Set warnings as errors ####
@@ -53,12 +51,15 @@ staticQu<-optionBigMatrix
 #List of arrays for the Butterfly run
 Butterfly<-optionBigMatrix
 
+#List of arrays for the Calendar spread
+calendarSpread<-optionBigMatrix
+
 #Initial vector of filling for the book
 intialOrderNum<-rep(0,length(dictionary)*20)
 
 intialOrderChar<-rep("0",length(dictionary)*20)
 
-#Initialize the OrderBook
+#Initialize the OrderBook for the 
 bigOrderBookQu<-data.table(type=      intialOrderChar,
                            name=      intialOrderChar,
                            order1=    intialOrderChar,
@@ -86,13 +87,24 @@ bigOrderBookBs<-data.table(type=      intialOrderChar,
                            quantity3= as.integer(intialOrderNum),
                            price3=    intialOrderNum)
 
-
+#Initialize the OrderBook for the Calendar Spreads
+bigOrderBookCs<-data.table(type=      intialOrderChar,
+                           name=      intialOrderChar,
+                           order1=    intialOrderChar,
+                           ticker1=   intialOrderChar,
+                           quantity1= as.integer(intialOrderNum),
+                           price1=    intialOrderNum,
+                           order2=    intialOrderChar,
+                           ticker2=   intialOrderChar,
+                           quantity2= as.integer(intialOrderNum),
+                           price2=    intialOrderNum)
 
 
 
 #Initialize OrderCount
 orderCountQu<-1L
 orderCountBs<-1L
+orderCountCs<-1L
 
 for (tickerName in names(optionBigMatrix)) {
   
@@ -146,6 +158,19 @@ for (tickerName in names(optionBigMatrix)) {
       #Set the key for searchs in the butterflies data table
       setkey(tickerBsMatrix,maturity)
     }
+    
+    
+    #Allocate the memory for the data table of Calendar Spreads
+    tickerCsMatrix <- data.table(maturity = tickerMaturityAum)
+    
+    #Set the dimension for all the data table of Calendar Spreads
+    set( tickerCsMatrix, 1:length(tickerMaturityAum) ,tickerStrikeAum, 
+         as.numeric(rep(NA,length(tickerMaturityAum))) )
+    
+    #Set the key for searchs in the Calendar Spreads data table
+    setkey(tickerCsMatrix,maturity)
+    
+    
     
     #Initial Values Augmented Option Matrix
     tickerAugmentedMatrix["0",,"bid"]<- (sb[1]-as.numeric(dimnames(tickerAugmentedMatrix)$Strike))*( (sb[1]-as.numeric(dimnames(tickerAugmentedMatrix)$Strike))>0 )
@@ -319,6 +344,11 @@ for (tickerName in names(optionBigMatrix)) {
       #print(i)
       #print(tickerName)
       
+      set(tickerCsMatrix,     #The data table
+          tickerCsMatrix[,.I[maturity==i]], #Filter to obtain the row
+          2:length(tickerCsMatrix), #All the columns
+          as.list(tickerAugmentedMatrix[i,,"ask"]-tickerAugmentedMatrix[match(i,rownames(tickerAugmentedMatrix))-1,,"bid"]))
+      
       
       #Error Debugger
       #print(i)
@@ -334,6 +364,8 @@ for (tickerName in names(optionBigMatrix)) {
     #Asign the BS Matrix in the list position
     Butterfly[[tickerName]]<-tickerBsMatrix
     
+    #Assign the CS Matrix in the list position
+    calendarSpread[[tickerName]]<-tickerCsMatrix
   }
   
   
@@ -350,6 +382,7 @@ if(dim(bigOrderBookBs[price1!=0][price2!=0][price3!=0])[1] != 0){
 }else{
   print("NONE")
 }
+
 
 #Rprof(NULL)
 
