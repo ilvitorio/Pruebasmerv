@@ -1,3 +1,5 @@
+#Rprof("Profilingtest")
+
 ###### Empieza el scrip para replicar el paper de Carr
 
 #### Set warnings as errors ####
@@ -348,6 +350,8 @@ for (tickerName in names(optionBigMatrix)) {
           tickerCsMatrix[,.I[maturity==i]], #Filter to obtain the row
           2:length(tickerCsMatrix), #All the columns
           as.list(tickerAugmentedMatrix[i,,"ask"]-tickerAugmentedMatrix[match(i,rownames(tickerAugmentedMatrix))-1,,"bid"]))
+      
+      #Getting the positions from the Calendar Spread
       
       
       #Error Debugger
