@@ -194,8 +194,11 @@ for (tickerName in names(optionBigMatrix)) {
       
       
       ##### Calculate the Static Q Matrix if exits the data to calculate it ####
+      #Static Q On/Off
+      
       #print(i)
       #print(tickerName)
+      
       if( length(na.omit(tickerAugmentedMatrix[i,,"bid"]))>=2 )
       {
         
@@ -240,12 +243,15 @@ for (tickerName in names(optionBigMatrix)) {
           orderCountQu<-orderCountQu + tickerQuOrderNumber
           
         }
-      }
+      } #Finish the loop for the Static Q
       
       
       ##### Calculate the Butterfly Matrix #####
+      #bUTTERFLY oN/oFF
+
       #print(i)
       #print(tickerName)
+      
       if( length(na.omit(tickerAugmentedMatrix[i,,"bid"]))>=3 )
       {
         
@@ -340,9 +346,11 @@ for (tickerName in names(optionBigMatrix)) {
         
         
         
-      }
+      } #Finish the Loop for the Butterfly
       
       ##### Calculate the Calendar Spread Matrix #####
+      #Calendar On/Off
+
       #print(i)
       #print(tickerName)
       
@@ -353,11 +361,62 @@ for (tickerName in names(optionBigMatrix)) {
       
       #Getting the positions from the Calendar Spread
       
+      #line to get the strikes
+      tickerCalendarStrikes<-na.omit(names(tickerCsMatrix)[tickerCsMatrix[maturity==i]<0])
+      #line to get the Short maturities
+      tickerCalendarShort<-tickerCsMatrix[tickerCsMatrix[,.I[maturity==i]-1],maturity]
+      #line to get the long maturities
+      tickerCalendarLong<-i
+      
+      
+
+
+      #Get the Long Positions
+      tickerOrderPanelCsLong<-tickerOption[tickerOption[["V17"]]==tickerCalendarLong & tickerOption[["V16"]] %in% tickerCalendarStrikes,]
+      
+      #Counter of Orders
+      tickerOrderNumberCs<-as.integer(dim(tickerOrderPanelCsLong)[1])
+      
+      
+      #Get the Short Positions
+      if(tickerCalendarShort[1]=="0"){
+        tickerOrderPanelCsShort<-rbind(rep(data.frame(as.character(dictionary[[tickerName]]),
+                                                      rbind(rep(NA,2)),
+                                                      rbind(as.numeric(as.character(unlist(spot[spot$V1==dictionary[[tickerName]],c(4,5,6,7)],use.name=F)))),
+                                                      rbind(rep(NA,10))) ,tickerOrderNumberCs))
+        
+      }else {
+        
+        tickerOrderPanelCsShort<-tickerOption[tickerOption[["V17"]]==tickerCalendarShort & tickerOption[["V16"]] %in% tickerCalendarStrikes,]
+      }
+      
+      
+      
       
       #Error Debugger
       #print(i)
       
-    }
+      #Assign orders to the Book if the orders exist
+      if(!(tickerOrderNumberCs==0L)) {
+        
+        #Order construction
+        tickerOrderCsMatrix<-data.frame( rep("A",tickerOrderNumberCs),
+                                         rep("CS",tickerOrderNumberCs), 
+                                         rep("B",tickerOrderNumberCs), tickerOrderPanelCsLong[,c(1,7,6)],   
+                                         rep("S",tickerOrderNumberCs), tickerOrderPanelCsShort[,c(1,4,5)])
+        #Order Booking
+        set(bigOrderBookCs, (orderCountCs):(orderCountCs+tickerOrderNumberCs-1) , 1L:10L , tickerOrderCsMatrix)
+        
+        #Update the Order Index
+        orderCountCs<-orderCountCs + tickerOrderNumberCs
+        }
+      
+      
+      }#Finish the loop for the date
+      
+      
+      
+    } #Finish the condition if there is data
     
     #Asign the Augmented Matrix in a list position
     optionBigMatrix[[tickerName]]<-tickerAugmentedMatrix
@@ -370,10 +429,10 @@ for (tickerName in names(optionBigMatrix)) {
     
     #Assign the CS Matrix in the list position
     calendarSpread[[tickerName]]<-tickerCsMatrix
-  }
+  } #Finish the loop for the tickerName
   
   
-}
+
 ##### Print the outputs ####
 if(dim(bigOrderBookQu[price1!=0][price2!=0])[1] != 0){
   print(bigOrderBookQu[price1!=0][price2!=0])
@@ -383,6 +442,12 @@ if(dim(bigOrderBookQu[price1!=0][price2!=0])[1] != 0){
 
 if(dim(bigOrderBookBs[price1!=0][price2!=0][price3!=0])[1] != 0){
   print(bigOrderBookBs[price1!=0][price2!=0][price3!=0])
+}else{
+  print("NONE")
+}
+
+if(dim(bigOrderBookCs[price1!=0][price2!=0])[1] != 0){
+  print(bigOrderBookCs[price1!=0][price2!=0])
 }else{
   print("NONE")
 }
