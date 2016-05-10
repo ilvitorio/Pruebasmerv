@@ -16,8 +16,12 @@ suppressWarnings(suppressMessages(require("data.table")))
 #myArgs = commandArgs(trailingOnly=TRUE)
 
 #Carga Lab
+#spot <- read.delim("~/General Documents/Maqui/online_spot.txt", header=FALSE)
+#options <- read.delim("~/General Documents/Maqui/online_option.txt", header=FALSE)
+
+#Carga Test
 spot <- read.delim("~/General Documents/Maqui/online_spot.txt", header=FALSE)
-options <- read.delim("~/General Documents/Maqui/online_option.txt", header=FALSE)
+options <- read.delim("~/General Documents/Maqui/option_test_vertical.txt", header=FALSE)
 
 #Carga desde la casa
 #spot <- read.delim("~/Maquinola/Live/Pruebasmerv-master/online_spot.txt", header=FALSE)
@@ -44,8 +48,8 @@ source("Dictionary.R")
 ticker <- levels(as.factor(options[["V14"]]))
 
 #List of arrays declaration
-optionBigMatrix<- vector("list",length(dictionary))
-names(optionBigMatrix) <- names(dictionary)
+optionBigMatrix<- vector("list",length(ticker))
+names(optionBigMatrix) <- names(ticker)
 
 #List of arrays for Static replication 1
 staticQu<-optionBigMatrix
