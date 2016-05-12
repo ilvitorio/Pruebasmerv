@@ -49,7 +49,7 @@ ticker <- levels(as.factor(options[["V14"]]))
 
 #List of arrays declaration
 optionBigMatrix<- vector("list",length(ticker))
-names(optionBigMatrix) <- names(ticker)
+names(optionBigMatrix) <- ticker
 
 #List of arrays for Static replication 1
 staticQu<-optionBigMatrix
